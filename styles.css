@@ -580,6 +580,12 @@ tbody tr.selected {
   font-weight: 800;
 }
 
+.voice-message {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .management-layout {
   display: grid;
   gap: 16px;

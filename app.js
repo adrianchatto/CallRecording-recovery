@@ -57,6 +57,7 @@ const state = {
   playback: {
     recordingId: null,
     timer: null,
+    utterance: null,
     position: 0,
     startedAt: null,
   },
@@ -458,6 +459,7 @@ function renderDetail() {
           <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
         </div>
         <span id="playbackStatus">Playback idle. Access will be logged when playback starts.</span>
+        <span class="voice-message">Dummy browser voice playback uses fictional script text only.</span>
         <span class="download-message">Download disabled. Playback only.</span>
       </section>
     </div>
@@ -502,6 +504,7 @@ function startPlayback(recordingId) {
   state.playback.position = 0;
   state.playback.startedAt = new Date();
   logAudit("Playback started", recording, { playbackStarted: state.playback.startedAt.toISOString(), playbackDuration: "0:00" });
+  playDummyVoice(recording);
   state.playback.timer = window.setInterval(() => {
     state.playback.position += 1;
     if (state.playback.position >= Math.min(recording.durationSeconds, 30)) {
@@ -517,6 +520,7 @@ function stopPlayback(action) {
   if (state.playback.timer) {
     window.clearInterval(state.playback.timer);
   }
+  stopDummyVoice();
   const recording = findRecording(state.playback.recordingId);
   if (action && recording) {
     logAudit(action, recording, {
@@ -526,10 +530,38 @@ function stopPlayback(action) {
     });
   }
   state.playback.timer = null;
+  state.playback.utterance = null;
   state.playback.recordingId = null;
   state.playback.position = 0;
   state.playback.startedAt = null;
   updatePlaybackUi();
+}
+
+function playDummyVoice(recording) {
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) return;
+
+  stopDummyVoice();
+  const script = [
+    "Demo call recording playback.",
+    `Recording ${recording.acdCallId}.`,
+    `Direction ${recording.direction}.`,
+    `Agent ${recording.agentName}, team ${recording.team}.`,
+    "This is a fictional dummy voice for prototype demonstration only.",
+    "No real customer audio, phone call, or NICE export is being played.",
+  ].join(" ");
+  const utterance = new SpeechSynthesisUtterance(script);
+  utterance.lang = "en-GB";
+  utterance.rate = 0.92;
+  utterance.pitch = 0.96;
+  utterance.volume = 0.85;
+  state.playback.utterance = utterance;
+  window.speechSynthesis.speak(utterance);
+}
+
+function stopDummyVoice() {
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
 }
 
 function completePlayback() {
