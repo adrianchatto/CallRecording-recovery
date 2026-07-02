@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Secure Recording Search</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <section id="loginView" class="login-view">
+        <div class="login-card">
+          <div class="brand-mark">SRS</div>
+          <h1>Secure Recording Search</h1>
+          <p>Demo-only call recording search and playback prototype using fictional data.</p>
+          <form id="loginForm" class="login-form">
+            <label>
+              Username
+              <input id="username" name="username" autocomplete="username" value="admin.demo" required />
+            </label>
+            <label>
+              Password
+              <input id="password" name="password" type="password" autocomplete="current-password" value="demo123" required />
+            </label>
+            <button type="submit">Log in</button>
+            <p id="loginError" class="form-error" role="alert"></p>
+          </form>
+          <div class="demo-credentials">
+            <strong>Demo users</strong>
+            <span>Admin: admin.demo / demo123</span>
+            <span>Standard: user.demo / demo123</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="workspace" class="workspace hidden" aria-label="Secure Recording Search workspace">
+        <aside class="side-nav">
+          <div class="nav-brand">
+            <div class="brand-mark small">SRS</div>
+            <div>
+              <strong>Secure Recording Search</strong>
+              <span>Internal demo</span>
+            </div>
+          </div>
+          <nav>
+            <button class="nav-item active" data-view="searchView">Recording Search</button>
+            <button class="nav-item admin-only" data-view="usersView">User Management</button>
+            <button class="nav-item admin-only" data-view="auditView">Audit Trail</button>
+          </nav>
+          <div class="security-stack">
+            <span>Private storage</span>
+            <span>Playback only</span>
+            <span>Downloads disabled</span>
+            <span>Signed playback URL simulated</span>
+            <span>Access logged</span>
+            <span>Admin controlled access</span>
+            <span>User status checked before playback</span>
+          </div>
+        </aside>
+
+        <main class="main">
+          <header class="top-bar">
+            <div>
+              <span class="eyebrow">Secure mock-up only</span>
+              <h2 id="viewTitle">Recording Search</h2>
+            </div>
+            <div class="account-bar">
+              <span id="activeRole" class="role-pill">Admin</span>
+              <div>
+                <strong id="activeName">Demo Admin</strong>
+                <span id="activeUsername">admin.demo</span>
+              </div>
+              <button id="logoutButton" class="ghost-button">Sign out</button>
+            </div>
+          </header>
+
+          <section id="searchView" class="view active">
+            <div class="notice-row">
+              <span>MP4 playback supported. WAV/MP3 conversion can be added later if required.</span>
+              <span>No AWS, S3, NICE, real calls, real phone numbers, credentials, or employee data.</span>
+            </div>
+
+            <section class="search-panel">
+              <div class="query-row">
+                <label class="query-field">
+                  Search recordings
+                  <input id="queryInput" placeholder="ACD Call ID, ANI, DNIS, agent, team, skill, disposition..." />
+                </label>
+                <button id="searchButton">Search</button>
+                <button id="clearButton" class="ghost-button">Clear Search</button>
+                <button id="filtersToggle" class="ghost-button">Advanced Filters</button>
+              </div>
+              <div class="quick-filters">
+                <button data-quick="24h">Last 24 hours</button>
+                <button data-quick="7d">Last 7 days</button>
+                <button data-quick="all" class="active">All demo records</button>
+              </div>
+              <div id="filtersDrawer" class="filters-drawer hidden">
+                <div class="filter-grid" id="filterGrid"></div>
+              </div>
+            </section>
+
+            <section class="content-grid">
+              <div class="results-panel">
+                <div class="table-toolbar">
+                  <strong id="resultCount">0 recordings</strong>
+                  <label>
+                    Rows
+                    <select id="pageSize">
+                      <option>25</option>
+                      <option>50</option>
+                      <option>100</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="table-wrap">
+                  <table id="recordingsTable">
+                    <thead>
+                      <tr>
+                        <th data-sort="startDate">Start Date</th>
+                        <th data-sort="acdCallId">ACD Call ID</th>
+                        <th data-sort="direction">Direction</th>
+                        <th data-sort="ani">ANI</th>
+                        <th data-sort="dnis">DNIS</th>
+                        <th data-sort="agentName">Agent Name</th>
+                        <th data-sort="team">Team</th>
+                        <th data-sort="disposition">Disposition</th>
+                        <th data-sort="voiceRecordingStatus">Voice Recording Status</th>
+                        <th data-sort="screenRecordingStatus">Screen Recording Status</th>
+                        <th data-sort="durationSeconds">Duration</th>
+                        <th>Playback</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <aside id="detailPanel" class="detail-panel">
+                <div class="empty-state">
+                  <strong>Select a recording</strong>
+                  <span>Metadata, transcript preview, and MP4 playback controls will appear here.</span>
+                </div>
+              </aside>
+            </section>
+          </section>
+
+          <section id="usersView" class="view">
+            <section class="management-layout">
+              <form id="createUserForm" class="admin-form">
+                <h3>Create user</h3>
+                <label>Username<input name="username" required placeholder="new.user" /></label>
+                <label>Full name<input name="fullName" required placeholder="Demo User" /></label>
+                <label>Email<input name="email" required type="email" placeholder="demo.user@example.invalid" /></label>
+                <label>Role<select name="role"><option>Standard User</option><option>Admin</option></select></label>
+                <button type="submit">Create User</button>
+              </form>
+              <div class="admin-table-panel">
+                <div class="table-wrap">
+                  <table id="usersTable">
+                    <thead>
+                      <tr>
+                        <th>Username</th>
+                        <th>Full name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Created date</th>
+                        <th>Last login</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <section id="auditView" class="view">
+            <div class="admin-table-panel">
+              <div class="table-toolbar">
+                <strong id="auditCount">Audit trail</strong>
+                <span>Admin-only view of playback and user actions</span>
+              </div>
+              <div class="table-wrap">
+                <table id="auditTable">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Username</th>
+                      <th>User role</th>
+                      <th>Action</th>
+                      <th>Recording ID</th>
+                      <th>ACD Call ID</th>
+                      <th>ANI</th>
+                      <th>DNIS</th>
+                      <th>Agent Name</th>
+                      <th>Playback started</th>
+                      <th>Playback stopped</th>
+                      <th>Playback duration</th>
+                      <th>User status at access</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </main>
+      </section>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
