@@ -47,10 +47,12 @@ const state = {
   recordings: buildRecordings(),
   audit: [],
   selectedRecordingId: null,
-  filtersOpen: false,
-  query: "",
-  quickFilter: "all",
-  filters: {},
+  search: {
+    startDate: "",
+    endDate: "",
+    agentName: "",
+    transcript: "",
+  },
   sortKey: "startDate",
   sortDirection: "desc",
   pageSize: 25,
@@ -63,34 +65,7 @@ const state = {
   },
 };
 
-const filterDefinitions = [
-  ["acdCallId", "ACD Call ID / Master Contact ID"],
-  ["segmentId", "Segment ID"],
-  ["segmentStartReason", "Segment Start Reason"],
-  ["segmentEndReason", "Segment End Reason"],
-  ["direction", "Direction"],
-  ["startDate", "Start Date"],
-  ["endDate", "End Date"],
-  ["channelType", "Channel Type"],
-  ["screenRecording", "Screen Recording"],
-  ["voiceRecordingStatus", "Voice Recording Status"],
-  ["screenRecordingStatus", "Screen Recording Status"],
-  ["recordingAlerts", "Recording Alerts"],
-  ["policyName", "Policy Name"],
-  ["ani", "ANI"],
-  ["dnis", "DNIS"],
-  ["acwSeconds", "ACW in seconds"],
-  ["disposition", "Disposition"],
-  ["agentUserId", "Agent User ID"],
-  ["agentAcdId", "Agent ACD ID"],
-  ["agentName", "Agent Name"],
-  ["agentTeamId", "Agent Team ID"],
-  ["team", "Team"],
-  ["skills", "Skills"],
-];
-
 document.addEventListener("DOMContentLoaded", () => {
-  buildFilterControls();
   bindEvents();
   renderAll();
 });
@@ -174,26 +149,21 @@ function bindEvents() {
   document.getElementById("loginForm").addEventListener("submit", handleLogin);
   document.getElementById("logoutButton").addEventListener("click", logout);
   document.getElementById("searchButton").addEventListener("click", () => {
-    state.query = document.getElementById("queryInput").value.trim();
+    readSearchInputs();
     logAudit("Recording searched");
     renderRecordings();
   });
-  document.getElementById("queryInput").addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      document.getElementById("searchButton").click();
-    }
-  });
   document.getElementById("clearButton").addEventListener("click", clearSearch);
-  document.getElementById("filtersToggle").addEventListener("click", () => {
-    state.filtersOpen = !state.filtersOpen;
-    document.getElementById("filtersDrawer").classList.toggle("hidden", !state.filtersOpen);
-  });
-  document.querySelectorAll(".quick-filters button").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.quickFilter = button.dataset.quick;
-      document.querySelectorAll(".quick-filters button").forEach((item) => item.classList.toggle("active", item === button));
+  getSearchInputs().forEach((input) => {
+    input.addEventListener("input", () => {
+      readSearchInputs();
       renderRecordings();
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        document.getElementById("searchButton").click();
+      }
     });
   });
   document.querySelectorAll(".nav-item").forEach((button) => {
@@ -214,22 +184,20 @@ function bindEvents() {
   document.getElementById("createUserForm").addEventListener("submit", createUser);
 }
 
-function buildFilterControls() {
-  const grid = document.getElementById("filterGrid");
-  filterDefinitions.forEach(([key, label]) => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = label;
-    const input = document.createElement("input");
-    input.dataset.filterKey = key;
-    input.type = key === "startDate" || key === "endDate" ? "date" : "text";
-    input.placeholder = key === "startDate" || key === "endDate" ? "" : `Filter ${label}`;
-    input.addEventListener("input", () => {
-      state.filters[key] = input.value.trim();
-      renderRecordings();
-    });
-    wrapper.append(input);
-    grid.append(wrapper);
-  });
+function getSearchInputs() {
+  return [
+    document.getElementById("startDateInput"),
+    document.getElementById("endDateInput"),
+    document.getElementById("agentNameInput"),
+    document.getElementById("transcriptInput"),
+  ];
+}
+
+function readSearchInputs() {
+  state.search.startDate = document.getElementById("startDateInput").value;
+  state.search.endDate = document.getElementById("endDateInput").value;
+  state.search.agentName = document.getElementById("agentNameInput").value.trim();
+  state.search.transcript = document.getElementById("transcriptInput").value.trim();
 }
 
 function handleLogin(event) {
@@ -337,30 +305,21 @@ function renderRecordings() {
 }
 
 function getFilteredRecordings() {
-  const query = state.query.toLowerCase();
-  const now = new Date("2026-07-02T12:00:00");
-  const quickCutoff = state.quickFilter === "24h"
-    ? new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    : state.quickFilter === "7d"
-      ? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      : null;
+  const agentTokens = tokenizeSearch(state.search.agentName);
+  const transcriptQuery = normalizeSearch(state.search.transcript);
 
   return state.recordings
     .filter((recording) => state.currentUser.role === "Admin" || recording.org === state.currentUser.accessGroup)
-    .filter((recording) => !quickCutoff || new Date(recording.startDate) >= quickCutoff)
     .filter((recording) => {
-      if (!query) return true;
-      return searchableText(recording).includes(query);
+      if (!state.search.startDate) return true;
+      return recording.startDate.slice(0, 10) >= state.search.startDate;
     })
-    .filter((recording) => Object.entries(state.filters).every(([key, value]) => {
-      if (!value) return true;
-      if (key === "startDate") return recording.startDate.slice(0, 10) >= value;
-      if (key === "endDate") return recording.endDate.slice(0, 10) <= value;
-      if (key.startsWith("agent") || key === "skills" || key === "team") {
-        return recording.agents.some((agent) => Object.values(agent).join(" ").toLowerCase().includes(value.toLowerCase()));
-      }
-      return String(recording[key] ?? "").toLowerCase().includes(value.toLowerCase());
-    }))
+    .filter((recording) => {
+      if (!state.search.endDate) return true;
+      return recording.startDate.slice(0, 10) <= state.search.endDate;
+    })
+    .filter((recording) => agentMatches(recording, agentTokens))
+    .filter((recording) => !transcriptQuery || normalizeSearch(recording.transcriptPreview).includes(transcriptQuery))
     .sort((a, b) => {
       const left = a[state.sortKey];
       const right = b[state.sortKey];
@@ -369,25 +328,23 @@ function getFilteredRecordings() {
     });
 }
 
-function searchableText(recording) {
-  return [
-    recording.id,
-    recording.acdCallId,
-    recording.masterContactId,
-    recording.segmentId,
-    recording.direction,
-    recording.ani,
-    recording.dnis,
-    recording.agentName,
-    recording.team,
-    recording.disposition,
-    recording.voiceRecordingStatus,
-    recording.screenRecordingStatus,
-    recording.recordingAlerts,
-    recording.policyName,
-    recording.skills,
-    ...recording.agents.flatMap((agent) => Object.values(agent)),
-  ].join(" ").toLowerCase();
+function agentMatches(recording, agentTokens) {
+  if (!agentTokens.length) return true;
+  const agentName = normalizeSearch(recording.agentName);
+  return agentTokens.every((token) => agentName.includes(token));
+}
+
+function normalizeSearch(value) {
+  return String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function tokenizeSearch(value) {
+  const normalized = normalizeSearch(value);
+  return normalized ? normalized.split(" ") : [];
 }
 
 function selectRecording(recordingId) {
@@ -706,14 +663,15 @@ function logAudit(action, recording = null, extras = {}) {
 }
 
 function clearSearch() {
-  state.query = "";
-  state.filters = {};
-  state.quickFilter = "all";
-  document.getElementById("queryInput").value = "";
-  document.querySelectorAll("[data-filter-key]").forEach((input) => {
+  state.search = {
+    startDate: "",
+    endDate: "",
+    agentName: "",
+    transcript: "",
+  };
+  getSearchInputs().forEach((input) => {
     input.value = "";
   });
-  document.querySelectorAll(".quick-filters button").forEach((button) => button.classList.toggle("active", button.dataset.quick === "all"));
   renderRecordings();
 }
 

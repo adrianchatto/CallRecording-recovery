@@ -81,22 +81,25 @@
             </div>
 
             <section class="search-panel">
-              <div class="query-row">
-                <label class="query-field">
-                  Search recordings
-                  <input id="queryInput" placeholder="ACD Call ID, ANI, DNIS, agent, team, skill, disposition..." />
+              <div class="query-row simple-search">
+                <label>
+                  Start Date
+                  <input id="startDateInput" type="date" />
+                </label>
+                <label>
+                  End Date
+                  <input id="endDateInput" type="date" />
+                </label>
+                <label>
+                  Agent Name
+                  <input id="agentNameInput" placeholder="Any order, e.g. Morgan Avery or Avery" />
+                </label>
+                <label>
+                  Transcript
+                  <input id="transcriptInput" placeholder="Search fictional transcript preview..." />
                 </label>
                 <button id="searchButton">Search</button>
                 <button id="clearButton" class="ghost-button">Clear Search</button>
-                <button id="filtersToggle" class="ghost-button">Advanced Filters</button>
-              </div>
-              <div class="quick-filters">
-                <button data-quick="24h">Last 24 hours</button>
-                <button data-quick="7d">Last 7 days</button>
-                <button data-quick="all" class="active">All demo records</button>
-              </div>
-              <div id="filtersDrawer" class="filters-drawer hidden">
-                <div class="filter-grid" id="filterGrid"></div>
               </div>
             </section>
 
